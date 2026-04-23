@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StackRouteImport } from './routes/stack'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as FeaturesRouteImport } from './routes/features'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as ArchitectureRouteImport } from './routes/architecture'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const FeaturesRoute = FeaturesRouteImport.update({
   path: '/features',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArchitectureRoute = ArchitectureRouteImport.update({
   id: '/architecture',
   path: '/architecture',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/demo': typeof DemoRoute
   '/features': typeof FeaturesRoute
   '/roadmap': typeof RoadmapRoute
   '/stack': typeof StackRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/demo': typeof DemoRoute
   '/features': typeof FeaturesRoute
   '/roadmap': typeof RoadmapRoute
   '/stack': typeof StackRoute
@@ -59,21 +67,36 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/architecture': typeof ArchitectureRoute
+  '/demo': typeof DemoRoute
   '/features': typeof FeaturesRoute
   '/roadmap': typeof RoadmapRoute
   '/stack': typeof StackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/architecture' | '/features' | '/roadmap' | '/stack'
+  fullPaths:
+    | '/'
+    | '/architecture'
+    | '/demo'
+    | '/features'
+    | '/roadmap'
+    | '/stack'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/architecture' | '/features' | '/roadmap' | '/stack'
-  id: '__root__' | '/' | '/architecture' | '/features' | '/roadmap' | '/stack'
+  to: '/' | '/architecture' | '/demo' | '/features' | '/roadmap' | '/stack'
+  id:
+    | '__root__'
+    | '/'
+    | '/architecture'
+    | '/demo'
+    | '/features'
+    | '/roadmap'
+    | '/stack'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArchitectureRoute: typeof ArchitectureRoute
+  DemoRoute: typeof DemoRoute
   FeaturesRoute: typeof FeaturesRoute
   RoadmapRoute: typeof RoadmapRoute
   StackRoute: typeof StackRoute
@@ -102,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeaturesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/architecture': {
       id: '/architecture'
       path: '/architecture'
@@ -122,6 +152,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArchitectureRoute: ArchitectureRoute,
+  DemoRoute: DemoRoute,
   FeaturesRoute: FeaturesRoute,
   RoadmapRoute: RoadmapRoute,
   StackRoute: StackRoute,
@@ -129,3 +160,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
