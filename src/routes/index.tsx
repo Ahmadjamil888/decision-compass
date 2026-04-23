@@ -1,15 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Shell, SectionLabel, BlueprintCard, Tag } from "@/components/Shell";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "Overview — Institutional Memory OS" },
+      { title: "Institutional Memory OS — Decision history that survives turnover" },
       {
         name: "description",
         content:
-          "The problem space, value propositions, and competitive moat behind Institutional Memory OS.",
+          "Capture decisions from your team's conversations and turn them into a queryable why-graph. Powered by Lovable AI.",
+      },
+      {
+        property: "og:title",
+        content: "Institutional Memory OS — Decision history that survives turnover",
+      },
+      {
+        property: "og:description",
+        content:
+          "Capture decisions from your team's conversations and turn them into a queryable why-graph. Powered by Lovable AI.",
       },
     ],
   }),
@@ -36,13 +46,37 @@ const props = [
   },
   {
     title: "Organizational asset, not personal",
-    body: "Knowledge is tied to the codebase, not the person. When people leave, their judgment stays. M&A teams can audit the complete cognitive history of a company.",
+    body: "Knowledge is tied to the codebase, not the person. When people leave, their judgment stays. M&A teams can audit complete cognitive history.",
   },
 ];
 
 function Index() {
+  const { user } = useAuth();
   return (
     <Shell>
+      <section className="mb-12">
+        <div className="mb-6 flex flex-wrap gap-2">
+          <Tag color="blue">AI-native</Tag>
+          <Tag color="green">SaaS</Tag>
+          <Tag color="amber">Knowledge Infrastructure</Tag>
+          <Tag color="red">High moat</Tag>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to={user ? "/dashboard" : "/signup"}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-3 font-mono text-xs uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            {user ? "Open dashboard →" : "Start capturing decisions →"}
+          </Link>
+          <Link
+            to="/features"
+            className="inline-flex items-center justify-center rounded-md border border-border px-5 py-3 font-mono text-xs uppercase tracking-wider text-foreground transition-colors hover:border-foreground/40"
+          >
+            See how it works
+          </Link>
+        </div>
+      </section>
+
       <section className="mb-16">
         <SectionLabel>The Problem Space</SectionLabel>
         <div className="grid gap-4 md:grid-cols-3">
@@ -85,17 +119,32 @@ function Index() {
           </span>
         </div>
         <div className="mt-3">
-          <Tag color="green">This → passive + causal reasoning</Tag>
+          <Tag color="green">imos → passive + causal reasoning</Tag>
         </div>
       </section>
 
       <section>
-        <Link
-          to="/demo"
-          className="inline-flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-5 py-3 font-mono text-sm uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
-        >
-          Try the live decision extractor →
-        </Link>
+        <BlueprintCard className="text-center">
+          <div className="mb-3 font-mono text-xs uppercase tracking-wider text-primary">
+            MVP — live now
+          </div>
+          <h3 className="font-display text-3xl text-foreground">
+            Paste a thread. Get a structured decision.
+          </h3>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            Sign up, paste any conversation thread (Slack, PR, meeting notes), and the AI
+            extracts the decision, alternatives, constraints, and expected outcome — saved
+            to your private decision graph.
+          </p>
+          <div className="mt-5">
+            <Link
+              to={user ? "/dashboard/new" : "/signup"}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-5 py-3 font-mono text-xs uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              {user ? "Capture a decision →" : "Try it free →"}
+            </Link>
+          </div>
+        </BlueprintCard>
       </section>
     </Shell>
   );
