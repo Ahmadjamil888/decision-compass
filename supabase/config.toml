@@ -1,1 +1,4 @@
 project_id = "aqbgmnvijpmkmcfwvkpe"
+
+[functions.extract-decision]
+verify_jwt = false
