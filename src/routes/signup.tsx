@@ -118,7 +118,7 @@ function SignupPage() {
 
       <p className="mt-5 text-center text-xs text-muted-foreground">
         Already have an account?{" "}
-        <Link to="/login" className="text-primary hover:underline">
+        <Link to="/login" search={{ redirect: "/dashboard" }} className="text-primary hover:underline">
           Sign in
         </Link>
       </p>
