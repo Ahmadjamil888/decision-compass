@@ -16,7 +16,7 @@ function LandingPage() {
       <section className="relative flex min-h-[85vh] flex-col items-center justify-center pt-20 text-center">
         {/* Ambient background glow */}
         <div className="absolute left-1/2 top-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
-        
+
         <Reveal>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-md">
             <span className="relative flex h-2 w-2">
@@ -36,7 +36,7 @@ function LandingPage() {
 
         <Reveal delay={200}>
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground/80 md:text-xl">
-            IMOS captures the "why" behind your decisions. We index conversations 
+            IMOS captures the "why" behind decisions. We index conversations
             from Slack, PRs, and meetings to build a living graph of your company's intent.
           </p>
         </Reveal>
@@ -75,7 +75,7 @@ function LandingPage() {
         <Reveal>
           <SectionLabel>The Core Engine</SectionLabel>
         </Reveal>
-        
+
         <div className="mt-12 grid gap-6 md:grid-cols-3">
           <Reveal delay={100}>
             <BlueprintCard className="group h-full transition-all hover:-translate-y-1">
@@ -145,12 +145,12 @@ function LandingPage() {
           <BlueprintCard className="relative overflow-hidden bg-foreground py-20 text-center">
             {/* Background pattern */}
             <div className="absolute inset-0 -z-10 opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]" />
-            
+
             <h2 className="font-display text-4xl text-background md:text-6xl">
               Ready to stop <br />repeating yourselves?
             </h2>
             <p className="mx-auto mt-6 max-w-lg text-background/60">
-              Join the waitlist for the Enterprise edition or start your personal 
+              Join the waitlist for the Enterprise edition or start your personal
               decision graph today for free.
             </p>
             <button
