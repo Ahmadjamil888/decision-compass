@@ -14,49 +14,164 @@ export type Database = {
   }
   public: {
     Tables: {
+      decision_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          kind: string
+          label: string
+          occurred_at: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind: string
+          label: string
+          occurred_at?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind?: string
+          label?: string
+          occurred_at?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_events_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "decision_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_questions: {
+        Row: {
+          answer: string | null
+          created_at: string
+          id: string
+          question: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          answer?: string | null
+          created_at?: string
+          id?: string
+          question: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          answer?: string | null
+          created_at?: string
+          id?: string
+          question?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_questions_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "decision_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_threads: {
         Row: {
           alternatives: Json
+          clarity_score: number | null
           confidence: number | null
+          conflicts: Json
+          consensus_score: number | null
           constraints: Json
+          contributors: Json
           created_at: string
           decision: string
           expected_outcome: string | null
           id: string
+          owner: string | null
           raw_thread: string
+          reason: string | null
           relations: Json
+          reversibility_score: number | null
+          revisit_at: string | null
+          revisit_trigger: string | null
+          risk_level: string | null
+          risk_score: number | null
           source: string | null
+          status: string
           title: string | null
+          tradeoffs: Json
           updated_at: string
           user_id: string
         }
         Insert: {
           alternatives?: Json
+          clarity_score?: number | null
           confidence?: number | null
+          conflicts?: Json
+          consensus_score?: number | null
           constraints?: Json
+          contributors?: Json
           created_at?: string
           decision: string
           expected_outcome?: string | null
           id?: string
+          owner?: string | null
           raw_thread: string
+          reason?: string | null
           relations?: Json
+          reversibility_score?: number | null
+          revisit_at?: string | null
+          revisit_trigger?: string | null
+          risk_level?: string | null
+          risk_score?: number | null
           source?: string | null
+          status?: string
           title?: string | null
+          tradeoffs?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
           alternatives?: Json
+          clarity_score?: number | null
           confidence?: number | null
+          conflicts?: Json
+          consensus_score?: number | null
           constraints?: Json
+          contributors?: Json
           created_at?: string
           decision?: string
           expected_outcome?: string | null
           id?: string
+          owner?: string | null
           raw_thread?: string
+          reason?: string | null
           relations?: Json
+          reversibility_score?: number | null
+          revisit_at?: string | null
+          revisit_trigger?: string | null
+          risk_level?: string | null
+          risk_score?: number | null
           source?: string | null
+          status?: string
           title?: string | null
+          tradeoffs?: Json
           updated_at?: string
           user_id?: string
         }
