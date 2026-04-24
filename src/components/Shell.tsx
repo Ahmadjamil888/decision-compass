@@ -81,6 +81,7 @@ export function Shell({
               <>
                 <Link
                   to="/login"
+                  search={{ redirect: "/dashboard" }}
                   className="rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 >
                   Sign in
