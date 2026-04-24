@@ -24,7 +24,7 @@ const features = [
   {
     icon: "🧠",
     title: "Decision Extractor (LLM Pipeline)",
-    body: "Lovable AI pipeline that reads conversation threads and infers: what decision was made, what alternatives were discussed, what constraints existed, and what was the expected outcome.",
+    body: "IMOS pipeline that reads conversation threads and infers: what decision was made, what alternatives were discussed, what constraints existed, and what was the expected outcome.",
   },
   {
     icon: "🕸️",

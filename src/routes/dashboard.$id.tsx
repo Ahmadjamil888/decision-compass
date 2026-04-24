@@ -1,46 +1,36 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Shell, SectionLabel, BlueprintCard, Tag } from "@/components/Shell";
+import { Shell, SectionLabel, BlueprintCard, Tag, Reveal } from "@/components/Shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard/$id")({
-  component: DecisionDetail,
-  head: () => ({ meta: [{ title: "Decision — imos" }] }),
+  component: DecisionDetailPage,
+  head: ({ data }) => ({ meta: [{ title: `${(data as any)?.title || "Decision"} — imos` }] }),
 });
 
-type Conflict = {
-  past_id: string;
-  past_decision: string;
-  type: string;
-  explanation: string;
-};
-
-type Thread = {
+type Decision = {
   id: string;
   title: string | null;
   source: string | null;
-  raw_thread: string;
   decision: string;
   reason: string | null;
   alternatives: string[];
   constraints: string[];
   tradeoffs: string[];
-  expected_outcome: string | null;
+  expected_outcome: string;
   owner: string | null;
   contributors: string[];
-  revisit_trigger: string | null;
   revisit_at: string | null;
-  relations: { type: string; target: string }[];
-  confidence: number | null;
-  clarity_score: number | null;
-  consensus_score: number | null;
-  risk_score: number | null;
-  reversibility_score: number | null;
-  risk_level: string | null;
-  status: string | null;
-  conflicts: Conflict[];
+  revisit_trigger: string | null;
+  confidence: number;
+  clarity_score: number;
+  consensus_score: number;
+  risk_score: number;
+  reversibility_score: number;
+  risk_level: string;
+  conflicts: any[];
   created_at: string;
 };
 
@@ -52,43 +42,48 @@ type Event = {
   occurred_at: string;
 };
 
-type QA = {
-  id: string;
-  question: string;
-  answer: string | null;
-  created_at: string;
-};
-
-function DecisionDetail() {
+function DecisionDetailPage() {
   const { id } = Route.useParams();
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [t, setT] = useState<Thread | null>(null);
+  const [data, setData] = useState<Decision | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
-  const [qa, setQa] = useState<QA[]>([]);
-  const [question, setQuestion] = useState("");
-  const [asking, setAsking] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [thread, ev, q] = await Promise.all([
-      supabase.from("decision_threads").select("*").eq("id", id).single(),
-      supabase.from("decision_events").select("*").eq("thread_id", id).order("occurred_at"),
-      supabase.from("decision_questions").select("*").eq("thread_id", id).order("created_at"),
-    ]);
-    if (thread.error) {
-      toast.error(thread.error.message);
+    const { data: d, error } = await supabase
+      .from("decision_threads")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error) {
+      toast.error(error.message);
       navigate({ to: "/dashboard" });
       return;
     }
-    setT(normalize(thread.data));
-    setEvents((ev.data ?? []) as Event[]);
-    setQa((q.data ?? []) as QA[]);
+    setData(normalize(d));
+
+    const { data: e } = await supabase
+      .from("decision_events")
+      .select("*")
+      .eq("thread_id", id)
+      .order("occurred_at", { ascending: true });
+    setEvents(e || []);
+    setLoading(false);
   };
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  if (loading || !data) {
+    return (
+      <Shell variant="app">
+        <div className="flex h-[60vh] items-center justify-center">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </Shell>
+    );
+  }
 
   const remove = async () => {
     if (!confirm("Delete this decision and all its history?")) return;
@@ -101,367 +96,204 @@ function DecisionDetail() {
     navigate({ to: "/dashboard" });
   };
 
-  const markRevisited = async () => {
-    if (!t || !user) return;
-    await supabase.from("decision_events").insert({
-      thread_id: t.id,
-      user_id: user.id,
-      kind: "revisited",
-      label: "Decision revisited",
-      detail: "User cleared the revisit alert",
-    });
-    await supabase
-      .from("decision_threads")
-      .update({ revisit_at: null, revisit_trigger: null })
-      .eq("id", t.id);
-    toast.success("Marked revisited");
-    load();
-  };
-
-  const ask = async () => {
-    if (!t || !user || !question.trim()) return;
-    setAsking(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("ask-decision", {
-        body: {
-          question,
-          context: {
-            decision: t.decision,
-            reason: t.reason,
-            alternatives: t.alternatives,
-            constraints: t.constraints,
-            tradeoffs: t.tradeoffs,
-            expected_outcome: t.expected_outcome,
-            owner: t.owner,
-            contributors: t.contributors,
-            revisit_trigger: t.revisit_trigger,
-          },
-        },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      const answer = data.answer as string;
-      const { data: row } = await supabase
-        .from("decision_questions")
-        .insert({ thread_id: t.id, user_id: user.id, question, answer })
-        .select("*")
-        .single();
-      if (row) setQa((prev) => [...prev, row as QA]);
-      setQuestion("");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Ask failed");
-    } finally {
-      setAsking(false);
-    }
-  };
-
-  if (!t) {
-    return (
-      <Shell variant="app">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </Shell>
-    );
-  }
-
-  const revisitOverdue = t.revisit_at && new Date(t.revisit_at) < new Date();
-
   return (
     <Shell variant="app">
-      <button
-        onClick={() => navigate({ to: "/dashboard" })}
-        className="mb-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
-      >
-        ← Back to dashboard
-      </button>
-
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            {t.source && <Tag color="blue">{t.source}</Tag>}
-            {t.risk_level && (
-              <Tag color={t.risk_level === "low" ? "green" : t.risk_level === "medium" ? "amber" : "red"}>
-                {t.risk_level} risk
-              </Tag>
-            )}
-            {t.owner && <Tag color="blue">owner · {t.owner}</Tag>}
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              {new Date(t.created_at).toLocaleString()}
-            </span>
-          </div>
-          <h1 className="font-display text-4xl text-foreground">{t.title || "Untitled decision"}</h1>
-        </div>
-        <button
-          onClick={remove}
-          className="rounded-md border border-border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
-        >
-          Delete
-        </button>
-      </div>
-
-      {/* Revisit alert banner */}
-      {t.revisit_trigger && (
-        <div
-          className={cn(
-            "mb-6 flex items-center justify-between gap-4 rounded-lg border p-4",
-            revisitOverdue
-              ? "border-tag-red-foreground/30 bg-tag-red/30"
-              : "border-tag-amber-foreground/30 bg-tag-amber/40",
-          )}
-        >
-          <div>
-            <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              {revisitOverdue ? "Revisit overdue" : "Revisit alert"}
-            </div>
-            <p className="mt-0.5 text-sm text-foreground">🔔 {t.revisit_trigger}</p>
-            {t.revisit_at && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Due {new Date(t.revisit_at).toLocaleDateString()}
-              </p>
-            )}
-          </div>
+      <Reveal className="mb-10">
+        <div className="flex items-center justify-between">
           <button
-            onClick={markRevisited}
-            className="rounded-md border border-border bg-background/60 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-foreground hover:border-foreground/40"
+            onClick={() => navigate({ to: "/dashboard" })}
+            className="group flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
           >
-            Mark revisited
+            <span className="transition-transform group-hover:-translate-x-0.5">←</span> Back to graph
           </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={remove}
+              className="rounded-full border border-border/60 bg-card/40 px-5 py-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-all hover:border-red-500/40 hover:text-red-500"
+            >
+              Delete Node
+            </button>
+            <button className="rounded-full bg-foreground px-5 py-2 font-mono text-[10px] uppercase tracking-wider text-background transition-all hover:opacity-90">
+              Edit Node
+            </button>
+          </div>
         </div>
-      )}
+      </Reveal>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
-          <BlueprintCard>
-            <SectionLabel>Decision</SectionLabel>
-            <p className="text-lg leading-relaxed text-foreground">{t.decision}</p>
-
-            {t.reason && (
-              <div className="mt-6">
-                <SectionLabel>Why</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">{t.reason}</p>
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-8">
+          <Reveal delay={100}>
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Tag color="blue">{data.source}</Tag>
+                <Tag color={data.risk_level === "low" ? "green" : data.risk_level === "medium" ? "amber" : "red"}>
+                  {data.risk_level} risk
+                </Tag>
+                <div className="h-1 w-1 rounded-full bg-border" />
+                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                  {new Date(data.created_at).toLocaleDateString()}
+                </span>
               </div>
-            )}
-
-            {t.expected_outcome && (
-              <div className="mt-6">
-                <SectionLabel>Expected outcome</SectionLabel>
-                <p className="text-sm leading-relaxed text-muted-foreground">{t.expected_outcome}</p>
-              </div>
-            )}
-
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <ListBlock label="Trade-offs" items={t.tradeoffs} />
-              <ListBlock label="Alternatives rejected" items={t.alternatives} />
-              <ListBlock label="Constraints" items={t.constraints} />
+              <h1 className="font-display text-4xl tracking-tight text-foreground md:text-5xl">
+                {data.title || "Decision Node"}
+              </h1>
+              <p className="text-xl leading-relaxed text-foreground/90">
+                {data.decision}
+              </p>
             </div>
-          </BlueprintCard>
+          </Reveal>
 
-          {/* Quality scores */}
-          <BlueprintCard>
-            <SectionLabel>Decision quality</SectionLabel>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <Score label="Clarity" value={t.clarity_score} />
-              <Score label="Consensus" value={t.consensus_score} />
-              <Score label="Risk" value={t.risk_score} invert />
-              <Score label="Reversibility" value={t.reversibility_score} />
-            </div>
-            <p className="mt-4 text-xs text-muted-foreground">
-              {qualitySummary(t)}
-            </p>
-          </BlueprintCard>
-
-          {/* Conflicts */}
-          {t.conflicts && t.conflicts.length > 0 && (
-            <BlueprintCard>
-              <SectionLabel>⚠ Conflicts detected</SectionLabel>
-              <ul className="space-y-2">
-                {t.conflicts.map((c, i) => (
-                  <li key={i} className="rounded border border-tag-red-foreground/30 bg-tag-red/30 p-3">
-                    <Tag color="red">{c.type}</Tag>
-                    <p className="mt-1.5 text-sm text-foreground">{c.past_decision}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{c.explanation}</p>
-                  </li>
-                ))}
-              </ul>
-            </BlueprintCard>
+          {data.reason && (
+            <Reveal delay={200}>
+              <SectionLabel>Rationale</SectionLabel>
+              <BlueprintCard className="bg-card/20">
+                <p className="text-base leading-relaxed text-muted-foreground/90">{data.reason}</p>
+              </BlueprintCard>
+            </Reveal>
           )}
 
-          {/* Q&A */}
-          <BlueprintCard>
-            <SectionLabel>Ask this decision</SectionLabel>
-            <div className="space-y-3">
-              {qa.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No questions yet. Ask anything — "Why not Supabase?", "What's the risk if it fails?"
-                </p>
-              )}
-              {qa.map((q) => (
-                <div key={q.id} className="rounded-md border border-border bg-background/40 p-3">
-                  <p className="mb-2 text-sm font-medium text-foreground">Q · {q.question}</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{q.answer}</p>
+          <Reveal delay={300}>
+            <div className="grid gap-8 md:grid-cols-2">
+              <div>
+                <SectionLabel>Trade-offs</SectionLabel>
+                <List items={data.tradeoffs} />
+              </div>
+              <div>
+                <SectionLabel>Alternatives rejected</SectionLabel>
+                <List items={data.alternatives} />
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={400}>
+            <SectionLabel>Timeline</SectionLabel>
+            <div className="relative space-y-6 pl-6 before:absolute before:left-[7px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-border/60">
+              {events.map((e, i) => (
+                <div key={e.id} className="relative">
+                  <div className="absolute -left-[23px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-mono text-[11px] uppercase tracking-wider text-foreground">
+                        {e.label}
+                      </span>
+                      <span className="font-mono text-[9px] text-muted-foreground/50">
+                        {new Date(e.occurred_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {e.detail && (
+                      <p className="text-sm text-muted-foreground/70">{e.detail}</p>
+                    )}
+                  </div>
                 </div>
               ))}
-              <div className="flex gap-2 pt-2">
-                <input
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") ask();
-                  }}
-                  placeholder="Ask a follow-up question…"
-                  className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
-                />
-                <button
-                  onClick={ask}
-                  disabled={asking || !question.trim()}
-                  className="rounded-md bg-primary px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {asking ? "Thinking…" : "Ask"}
-                </button>
-              </div>
             </div>
-          </BlueprintCard>
+          </Reveal>
         </div>
 
-        <div className="space-y-4">
-          {/* Timeline */}
-          <BlueprintCard>
-            <SectionLabel>Timeline</SectionLabel>
-            {events.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No events.</p>
-            ) : (
-              <ol className="space-y-3 border-l border-border pl-4">
-                {events.map((e) => (
-                  <li key={e.id} className="relative">
-                    <span className="absolute -left-[21px] top-1 inline-block h-2 w-2 rounded-full bg-primary" />
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {new Date(e.occurred_at).toLocaleDateString()} · {e.kind}
-                    </div>
-                    <p className="text-sm text-foreground">{e.label}</p>
-                    {e.detail && (
-                      <p className="text-xs text-muted-foreground">{e.detail}</p>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </BlueprintCard>
-
-          {/* People */}
-          {(t.owner || t.contributors.length > 0) && (
-            <BlueprintCard>
-              <SectionLabel>People</SectionLabel>
-              {t.owner && (
-                <div className="mb-2">
-                  <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Owner</div>
-                  <p className="text-sm text-foreground">{t.owner}</p>
+        <div className="space-y-8">
+          <Reveal delay={200}>
+            <SectionLabel>Node Quality</SectionLabel>
+            <BlueprintCard className="space-y-6">
+              <Score label="Confidence" value={data.confidence} />
+              <Score label="Clarity" value={data.clarity_score} />
+              <Score label="Consensus" value={data.consensus_score} />
+              <Score label="Reversibility" value={data.reversibility_score} />
+              <div className="pt-4 border-t border-border/40">
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">Risk Profile</div>
+                <div className={`h-2 w-full rounded-full bg-border/40 overflow-hidden`}>
+                  <div 
+                    className={`h-full transition-all duration-1000 ${data.risk_level === "low" ? "bg-green-500" : data.risk_level === "medium" ? "bg-amber-500" : "bg-red-500"}`} 
+                    style={{ width: `${(data.risk_score || 0) * 100}%` }} 
+                  />
                 </div>
-              )}
-              {t.contributors.length > 0 && (
-                <div>
-                  <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Contributors</div>
-                  <p className="text-sm text-foreground">{t.contributors.join(", ")}</p>
+              </div>
+            </BlueprintCard>
+          </Reveal>
+
+          <Reveal delay={300}>
+            <SectionLabel>Owners & Context</SectionLabel>
+            <BlueprintCard className="space-y-4">
+              <Field label="Owner" value={data.owner || "Unassigned"} />
+              <Field label="Contributors" value={data.contributors.join(", ") || "None recorded"} />
+              {data.revisit_trigger && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-amber-500">Revisit Trigger</div>
+                  <p className="text-sm text-foreground/90">🔔 {data.revisit_trigger}</p>
+                  {data.revisit_at && (
+                    <p className="mt-2 font-mono text-[10px] text-muted-foreground/60">
+                      Target: {new Date(data.revisit_at).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               )}
             </BlueprintCard>
-          )}
+          </Reveal>
 
-          {/* Graph relations */}
-          <BlueprintCard>
-            <SectionLabel>Graph relations</SectionLabel>
-            {t.relations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">None inferred.</p>
-            ) : (
-              <ul className="space-y-2">
-                {t.relations.map((r, i) => (
-                  <li key={i}>
-                    <Tag color="blue">{r.type}</Tag>
-                    <p className="mt-1 text-sm text-foreground">{r.target}</p>
-                  </li>
+          {data.conflicts && data.conflicts.length > 0 && (
+            <Reveal delay={400}>
+              <SectionLabel>Conflicts Flagged</SectionLabel>
+              <div className="space-y-3">
+                {data.conflicts.map((c, i) => (
+                  <BlueprintCard key={i} className="border-red-500/20 bg-red-500/5">
+                    <Tag color="red">{c.type}</Tag>
+                    <p className="mt-3 text-sm font-medium text-foreground">{c.past_decision}</p>
+                    <p className="mt-1 text-xs text-muted-foreground/70">{c.explanation}</p>
+                  </BlueprintCard>
                 ))}
-              </ul>
-            )}
-          </BlueprintCard>
-
-          {/* Source */}
-          <BlueprintCard>
-            <SectionLabel>Source thread</SectionLabel>
-            <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-background/60 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
-              {t.raw_thread}
-            </pre>
-          </BlueprintCard>
+              </div>
+            </Reveal>
+          )}
         </div>
       </div>
     </Shell>
   );
 }
 
-function ListBlock({ label, items }: { label: string; items: string[] }) {
+function Score({ label, value }: { label: string; value: number | null }) {
+  const v = value || 0;
   return (
-    <div>
-      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</span>
+        <span className="font-mono text-[11px] text-foreground">{(v * 100).toFixed(0)}%</span>
       </div>
-      {!items || items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">None.</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {items.map((it, i) => (
-            <li key={i} className="rounded border border-border bg-muted/40 px-2.5 py-1.5 text-sm text-foreground">
-              {it}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function Score({ label, value, invert = false }: { label: string; value: number | null; invert?: boolean }) {
-  const v = typeof value === "number" ? value : 0;
-  const display = (v * 100).toFixed(0);
-  // For "invert" (e.g. risk), high = bad
-  const good = invert ? v < 0.4 : v > 0.6;
-  const bad = invert ? v > 0.7 : v < 0.4;
-  const tagColor = good ? "green" : bad ? "red" : "amber";
-  return (
-    <div>
-      <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="font-display text-2xl text-foreground">{display}%</span>
-        <Tag color={tagColor as "green" | "amber" | "red"}>
-          {good ? "good" : bad ? "weak" : "ok"}
-        </Tag>
-      </div>
-      <div className="mt-1.5 h-1 w-full overflow-hidden rounded bg-muted">
-        <div
-          className={cn(
-            "h-full rounded",
-            good ? "bg-tag-green-foreground" : bad ? "bg-tag-red-foreground" : "bg-tag-amber-foreground",
-          )}
-          style={{ width: `${display}%` }}
+      <div className="h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
+        <div 
+          className="h-full bg-primary transition-all duration-1000" 
+          style={{ width: `${v * 100}%` }} 
         />
       </div>
     </div>
   );
 }
 
-function qualitySummary(t: Thread): string {
-  const parts: string[] = [];
-  if ((t.consensus_score ?? 1) < 0.5) parts.push("weak consensus");
-  if ((t.risk_score ?? 0) > 0.6) parts.push("high downside risk");
-  if ((t.reversibility_score ?? 1) < 0.4) parts.push("hard to reverse");
-  if ((t.clarity_score ?? 1) < 0.5) parts.push("ambiguously stated");
-  if (parts.length === 0) return "This decision scores well across clarity, consensus, risk, and reversibility.";
-  return `Watch out: ${parts.join(", ")}.`;
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">{label}</div>
+      <div className="text-sm text-foreground/90">{value}</div>
+    </div>
+  );
 }
 
-function cn(...a: (string | false | undefined | null)[]) {
-  return a.filter(Boolean).join(" ");
+function List({ items }: { items: string[] }) {
+  if (!items || items.length === 0)
+    return <p className="text-xs text-muted-foreground/40 italic">None recorded</p>;
+  return (
+    <ul className="space-y-2">
+      {items.map((a, i) => (
+        <li
+          key={i}
+          className="rounded-xl border border-border/40 bg-card/20 px-4 py-3 text-sm leading-relaxed text-foreground/80"
+        >
+          {a}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-function normalize(row: any): Thread {
+function normalize(row: any): Decision {
   return {
     ...row,
     alternatives: Array.isArray(row.alternatives) ? row.alternatives : [],

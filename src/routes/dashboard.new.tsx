@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Shell, SectionLabel, BlueprintCard, Tag } from "@/components/Shell";
+import { Shell, SectionLabel, BlueprintCard, Tag, Reveal } from "@/components/Shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
@@ -154,180 +154,204 @@ function NewDecisionPage() {
 
   return (
     <Shell variant="app">
-      <div className="mb-6">
+      <Reveal className="mb-8">
         <button
           onClick={() => navigate({ to: "/dashboard" })}
-          className="mb-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          className="group mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
         >
-          ← Back to dashboard
+          <span className="transition-transform group-hover:-translate-x-0.5">←</span> Back to dashboard
         </button>
-        <SectionLabel>Capture a decision</SectionLabel>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Paste a conversation. The extraction engine pulls the decision, reason, alternatives,
-          trade-offs, owner, revisit trigger, and quality scores — and flags conflicts with past
-          decisions before you save.
+        <h1 className="font-display text-4xl tracking-tight text-foreground md:text-5xl">Capture node<span className="text-primary">.</span></h1>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
+          Paste a raw conversation. Our engine extracts the intent, scores the quality,
+          and cross-references your institutional memory for potential conflicts.
         </p>
-      </div>
+      </Reveal>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <BlueprintCard>
-          <h3 className="mb-3 font-mono text-xs uppercase tracking-wider text-primary">
-            Input · Conversation thread
-          </h3>
-
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <label className="block">
-              <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Title (optional)
-              </div>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Auth pooler rollout"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
-              />
-            </label>
-            <label className="block">
-              <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Source
-              </div>
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Reveal delay={100}>
+          <BlueprintCard>
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+                Input · Context
+              </h3>
+              <button
+                onClick={() => setThread(SAMPLE)}
+                className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 transition-colors hover:text-foreground"
               >
-                <option>Slack</option>
-                <option>GitHub PR</option>
-                <option>Email</option>
-                <option>Meeting</option>
-                <option>Jira</option>
-                <option>Other</option>
-              </select>
-            </label>
-          </div>
+                Use sample
+              </button>
+            </div>
 
-          <textarea
-            value={thread}
-            onChange={(e) => setThread(e.target.value)}
-            rows={16}
-            className="w-full resize-y rounded-md border border-border bg-background/60 p-3 font-mono text-xs leading-relaxed text-foreground outline-none focus:border-primary/50"
-            placeholder="Paste a Slack thread, PR comments, or meeting transcript…"
-          />
-          <div className="mt-3 flex items-center gap-2">
+            <div className="mb-6 grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">Title</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Auth pooler rollout"
+                  className="w-full rounded-xl border border-border/60 bg-card/40 px-4 py-3 font-mono text-sm text-foreground outline-none transition-all focus:border-primary/40 focus:bg-card/60"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">Source</label>
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className="w-full rounded-xl border border-border/60 bg-card/40 px-4 py-3 font-mono text-sm text-foreground outline-none transition-all focus:border-primary/40 focus:bg-card/60"
+                >
+                  <option>Slack</option>
+                  <option>GitHub PR</option>
+                  <option>Email</option>
+                  <option>Meeting</option>
+                  <option>Jira</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">Conversation Thread</label>
+              <textarea
+                value={thread}
+                onChange={(e) => setThread(e.target.value)}
+                rows={14}
+                className="w-full resize-none rounded-xl border border-border/60 bg-card/40 p-4 font-mono text-xs leading-relaxed text-foreground outline-none transition-all focus:border-primary/40 focus:bg-card/60"
+                placeholder="Paste Slack, PR comments, or transcripts…"
+              />
+            </div>
+
             <button
               onClick={extract}
               disabled={extracting || !thread.trim()}
-              className="rounded-md border border-primary/40 bg-primary/10 px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary hover:bg-primary/20 disabled:opacity-50"
+              className="group relative mt-6 w-full overflow-hidden rounded-full bg-primary/10 px-6 py-4 font-mono text-[11px] uppercase tracking-wider text-primary transition-all duration-300 hover:bg-primary/20 disabled:opacity-50"
             >
-              {extracting ? "Extracting…" : "Extract with AI →"}
-            </button>
-            <button
-              onClick={() => setThread(SAMPLE)}
-              className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
-            >
-              Reset sample
-            </button>
-          </div>
-        </BlueprintCard>
-
-        <BlueprintCard>
-          <h3 className="mb-3 font-mono text-xs uppercase tracking-wider text-primary">
-            Output · Structured decision
-          </h3>
-
-          {!result && !extracting && (
-            <div className="flex h-full min-h-[280px] items-center justify-center">
-              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                Awaiting extraction…
-              </p>
-            </div>
-          )}
-          {extracting && (
-            <div className="flex h-full min-h-[280px] items-center justify-center">
-              <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                Reasoning over thread, scoring, checking conflicts…
-              </p>
-            </div>
-          )}
-
-          {result && (
-            <div className="space-y-4">
-              <Field label="Decision">
-                <p className="text-base leading-relaxed text-foreground">{result.decision}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Tag color={result.risk_level === "low" ? "green" : result.risk_level === "medium" ? "amber" : "red"}>
-                    {result.risk_level} risk
-                  </Tag>
-                  <Tag color={result.consensus_score > 0.7 ? "green" : result.consensus_score > 0.4 ? "amber" : "red"}>
-                    consensus {(result.consensus_score * 100).toFixed(0)}%
-                  </Tag>
-                  <Tag color={result.reversibility_score > 0.6 ? "green" : "amber"}>
-                    {result.reversibility_score > 0.6 ? "reversible" : "one-way door"}
-                  </Tag>
-                </div>
-              </Field>
-
-              {result.reason && (
-                <Field label="Why">
-                  <p className="text-sm leading-relaxed text-muted-foreground">{result.reason}</p>
-                </Field>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                {result.owner && (
-                  <Field label="Owner">
-                    <p className="text-sm text-foreground">{result.owner}</p>
-                  </Field>
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {extracting ? (
+                  <>
+                    <div className="h-3 w-3 animate-spin rounded-full border border-primary border-t-transparent" />
+                    Extracting intent…
+                  </>
+                ) : (
+                  <>
+                    Begin AI Extraction <span className="transition-transform group-hover:translate-x-1">→</span>
+                  </>
                 )}
-                {result.contributors.length > 0 && (
-                  <Field label="Contributors">
-                    <p className="text-sm text-foreground">{result.contributors.join(", ")}</p>
-                  </Field>
-                )}
+              </span>
+            </button>
+          </BlueprintCard>
+        </Reveal>
+
+        <Reveal delay={200}>
+          <BlueprintCard className="h-full">
+            <h3 className="mb-6 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+              Output · Extraction
+            </h3>
+
+            {!result && !extracting && (
+              <div className="flex h-[400px] flex-col items-center justify-center text-center">
+                <div className="mb-4 h-px w-12 bg-border/60" />
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40">
+                  Ready for analysis
+                </p>
               </div>
+            )}
 
-              {result.revisit_trigger && (
-                <Field label="Revisit when">
-                  <p className="rounded-md border border-tag-amber-foreground/30 bg-tag-amber/40 px-3 py-2 text-sm text-foreground">
-                    🔔 {result.revisit_trigger}
-                  </p>
+            {extracting && (
+              <div className="flex h-[400px] flex-col items-center justify-center space-y-4">
+                <div className="flex gap-1">
+                  <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
+                  <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
+                  <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" style={{ animationDelay: "300ms" }} />
+                </div>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">
+                  Mapping relationships & identifying risk
+                </p>
+              </div>
+            )}
+
+            {result && (
+              <div className="space-y-6">
+                <Field label="Decision Intent">
+                  <p className="text-base leading-relaxed text-foreground">{result.decision}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Tag color={result.risk_level === "low" ? "green" : result.risk_level === "medium" ? "amber" : "red"}>
+                      {result.risk_level} risk
+                    </Tag>
+                    <Tag color={result.consensus_score > 0.7 ? "green" : result.consensus_score > 0.4 ? "amber" : "red"}>
+                      {(result.consensus_score * 100).toFixed(0)}% consensus
+                    </Tag>
+                    <Tag color={result.reversibility_score > 0.6 ? "green" : "amber"}>
+                      {result.reversibility_score > 0.6 ? "reversible" : "one-way door"}
+                    </Tag>
+                  </div>
                 </Field>
-              )}
 
-              <Field label="Trade-offs">
-                <List items={result.tradeoffs} />
-              </Field>
-              <Field label="Alternatives rejected">
-                <List items={result.alternatives} />
-              </Field>
-              <Field label="Constraints">
-                <List items={result.constraints} />
-              </Field>
+                {result.reason && (
+                  <Field label="Rationale">
+                    <p className="text-sm leading-relaxed text-muted-foreground/80">{result.reason}</p>
+                  </Field>
+                )}
 
-              {conflicts.length > 0 && (
-                <Field label={`⚠ Conflicts with ${conflicts.length} past decision${conflicts.length > 1 ? "s" : ""}`}>
-                  <ul className="space-y-2">
-                    {conflicts.map((c, i) => (
-                      <li key={i} className="rounded border border-tag-red-foreground/30 bg-tag-red/30 p-2.5">
-                        <Tag color="red">{c.type}</Tag>
-                        <p className="mt-1.5 text-sm text-foreground">{c.past_decision}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{c.explanation}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </Field>
-              )}
+                <div className="grid grid-cols-2 gap-6">
+                  {result.owner && (
+                    <Field label="Owner">
+                      <p className="text-sm text-foreground/90">{result.owner}</p>
+                    </Field>
+                  )}
+                  {result.contributors.length > 0 && (
+                    <Field label="Contributors">
+                      <p className="text-sm text-foreground/90">{result.contributors.join(", ")}</p>
+                    </Field>
+                  )}
+                </div>
 
-              <button
-                onClick={save}
-                disabled={saving}
-                className="mt-2 w-full rounded-md bg-primary px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {saving ? "Saving…" : "Save to graph →"}
-              </button>
-            </div>
-          )}
-        </BlueprintCard>
+                {result.revisit_trigger && (
+                  <Field label="Revisit Trigger">
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-foreground/90">
+                      🔔 {result.revisit_trigger}
+                    </div>
+                  </Field>
+                )}
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Field label="Trade-offs">
+                    <List items={result.tradeoffs} />
+                  </Field>
+                  <Field label="Alternatives">
+                    <List items={result.alternatives} />
+                  </Field>
+                </div>
+
+                {conflicts.length > 0 && (
+                  <Field label="Institutional Memory Conflict">
+                    <ul className="space-y-3">
+                      {conflicts.map((c, i) => (
+                        <li key={i} className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
+                          <div className="mb-2">
+                            <Tag color="red">{c.type}</Tag>
+                          </div>
+                          <p className="text-sm font-medium text-foreground">{c.past_decision}</p>
+                          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/70">{c.explanation}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </Field>
+                )}
+
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  className="group relative w-full overflow-hidden rounded-full bg-primary px-6 py-4 font-mono text-[11px] uppercase tracking-wider text-primary-foreground transition-all duration-300 hover:bg-primary/90 active:scale-[0.98] hover:shadow-xl hover:shadow-primary/10"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {saving ? "Indexing Node…" : "Commit to Graph →"}
+                  </span>
+                </button>
+              </div>
+            )}
+          </BlueprintCard>
+        </Reveal>
       </div>
     </Shell>
   );
@@ -335,8 +359,8 @@ function NewDecisionPage() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="space-y-2">
+      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60">
         {label}
       </div>
       {children}
@@ -346,13 +370,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function List({ items }: { items: string[] }) {
   if (!items || items.length === 0)
-    return <p className="text-sm text-muted-foreground">None recorded.</p>;
+    return <p className="text-xs text-muted-foreground/40 italic">None recorded</p>;
   return (
     <ul className="space-y-1.5">
       {items.map((a, i) => (
         <li
           key={i}
-          className="rounded border border-border bg-muted/40 px-2.5 py-1.5 text-sm text-foreground"
+          className="rounded-lg border border-border/40 bg-card/20 px-3 py-2 text-xs leading-relaxed text-foreground/80"
         >
           {a}
         </li>

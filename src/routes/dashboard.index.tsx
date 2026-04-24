@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Shell, SectionLabel, BlueprintCard, Tag } from "@/components/Shell";
+import { Shell, SectionLabel, BlueprintCard, Tag, Reveal } from "@/components/Shell";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
@@ -89,135 +89,189 @@ function DashboardIndex() {
 
   return (
     <Shell variant="app">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Welcome back
+      <Reveal className="mb-10">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div className="space-y-1">
+            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground/60">
+              Personal Workspace
+            </div>
+            <h1 className="font-display text-4xl tracking-tight text-foreground md:text-5xl">
+              {user?.user_metadata?.display_name || user?.email?.split("@")[0]}'s graph<span className="text-primary">.</span>
+            </h1>
+            <p className="text-sm text-muted-foreground/80">
+              {rows === null
+                ? "Indexing your institutional memory…"
+                : `${rows.length} decision${rows.length === 1 ? "" : "s"} captured · ${conflictCount} conflict${conflictCount === 1 ? "" : "s"} flagged`}
+            </p>
           </div>
-          <h1 className="font-display text-4xl text-foreground">
-            {user?.user_metadata?.display_name || user?.email?.split("@")[0]}'s graph
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {rows === null
-              ? "Loading…"
-              : `${rows.length} decision${rows.length === 1 ? "" : "s"} captured · ${conflictCount} conflict${conflictCount === 1 ? "" : "s"} flagged`}
-          </p>
+          <button
+            onClick={() => navigate({ to: "/dashboard/new" })}
+            className="group relative overflow-hidden rounded-full bg-primary px-6 py-3 font-mono text-[11px] uppercase tracking-wider text-primary-foreground transition-all duration-300 hover:bg-primary/90 active:scale-[0.98] hover:shadow-xl hover:shadow-primary/10"
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <span className="text-lg">+</span> Capture decision
+            </span>
+          </button>
         </div>
-        <button
-          onClick={() => navigate({ to: "/dashboard/new" })}
-          className="rounded-md bg-primary px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
-        >
-          + Capture decision
-        </button>
-      </div>
+      </Reveal>
 
       {/* Revisit alerts */}
       {revisits.length > 0 && (
-        <BlueprintCard className="mb-6 border-tag-amber-foreground/30 bg-tag-amber/20">
-          <SectionLabel>🔔 Revisit alerts ({revisits.length})</SectionLabel>
-          <ul className="space-y-2">
-            {revisits.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3">
-                <div className="flex-1">
+        <Reveal delay={100} className="mb-8">
+          <BlueprintCard className="border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40">
+            <div className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-amber-500">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span>
+              </span>
+              Revisit alerts ({revisits.length})
+            </div>
+            <ul className="divide-y divide-amber-500/10">
+              {revisits.map((r) => (
+                <li key={r.id} className="group flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                  <div className="flex-1">
+                    <Link
+                      to="/dashboard/$id"
+                      params={{ id: r.id }}
+                      className="text-sm font-medium text-foreground transition-colors hover:text-amber-500"
+                    >
+                      {r.title || r.decision}
+                    </Link>
+                    <p className="mt-0.5 text-xs text-muted-foreground/70">{r.revisit_trigger}</p>
+                  </div>
+                  {r.revisit_at && (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                      due {new Date(r.revisit_at).toLocaleDateString()}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </BlueprintCard>
+        </Reveal>
+      )}
+
+      <Reveal delay={200} className="mb-10">
+        <div className="relative">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search decisions, owners, or keywords…"
+            className="w-full rounded-2xl border border-border/60 bg-card/40 px-6 py-4 font-mono text-sm text-foreground outline-none transition-all duration-300 placeholder:text-muted-foreground/40 focus:border-primary/40 focus:bg-card/60 focus:ring-4 focus:ring-primary/5"
+          />
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40">
+            {search ? `${filtered?.length || 0} found` : "Filter nodes"}
+          </div>
+        </div>
+      </Reveal>
+
+      <Reveal delay={300}>
+        <SectionLabel>Captured Nodes</SectionLabel>
+      </Reveal>
+
+      {filtered === null ? (
+        <Reveal delay={400}>
+          <BlueprintCard className="flex items-center justify-center py-20">
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground/60">Indexing Graph…</p>
+            </div>
+          </BlueprintCard>
+        </Reveal>
+      ) : filtered.length === 0 ? (
+        <Reveal delay={400}>
+          <BlueprintCard className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="mb-6 rounded-full bg-primary/5 p-8">
+              <div className="h-12 w-12 text-primary/40">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="font-display text-2xl tracking-tight text-foreground">
+              {rows && rows.length === 0 ? "Your graph is empty" : "No nodes found"}
+            </h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground/70">
+              {rows && rows.length === 0
+                ? "Capture threads from Slack, PRs, or meetings. IMOS extracts the intent and links it to your institutional memory."
+                : `No results matching "${search}". Try searching for different keywords or owners.`}
+            </p>
+            {rows && rows.length === 0 && (
+              <button
+                onClick={() => navigate({ to: "/dashboard/new" })}
+                className="mt-8 rounded-full bg-primary px-8 py-3.5 font-mono text-[11px] uppercase tracking-wider text-primary-foreground transition-all hover:bg-primary/90"
+              >
+                Capture your first decision →
+              </button>
+            )}
+          </BlueprintCard>
+        </Reveal>
+      ) : (
+        <div className="grid gap-4">
+          {filtered.map((r, i) => (
+            <Reveal key={r.id} delay={400 + i * 50}>
+              <BlueprintCard className="overflow-hidden">
+                <div className="flex items-start justify-between gap-6">
                   <Link
                     to="/dashboard/$id"
                     params={{ id: r.id }}
-                    className="text-sm text-foreground hover:text-primary"
+                    className="group flex-1"
                   >
-                    {r.title || r.decision}
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {r.source && <Tag color="blue">{r.source}</Tag>}
+                      {r.risk_level && (
+                        <Tag color={r.risk_level === "low" ? "green" : r.risk_level === "medium" ? "amber" : "red"}>
+                          {r.risk_level} risk
+                        </Tag>
+                      )}
+                      {r.owner && (
+                        <span className="font-mono text-[10px] text-muted-foreground/60">
+                          by <span className="text-foreground/80">{r.owner}</span>
+                        </span>
+                      )}
+                      <div className="h-1 w-1 rounded-full bg-border" />
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {r.title && (
+                      <div className="mb-2 font-display text-xl tracking-tight text-foreground transition-colors group-hover:text-primary">
+                        {r.title}
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed text-muted-foreground transition-colors group-hover:text-muted-foreground/80">
+                      {r.decision}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      {r.conflicts?.length > 0 && (
+                        <span className="rounded-full bg-red-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-red-500">
+                          ⚠ {r.conflicts.length} Conflict
+                        </span>
+                      )}
+                      {r.revisit_trigger && (
+                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-amber-500">
+                          🔔 Revisit
+                        </span>
+                      )}
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-primary">
+                        View Node →
+                      </span>
+                    </div>
                   </Link>
-                  <p className="text-xs text-muted-foreground">{r.revisit_trigger}</p>
+                  <button
+                    onClick={() => remove(r.id)}
+                    className="rounded-full border border-border/60 bg-card/40 px-4 py-1.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 transition-all hover:border-red-500/40 hover:bg-red-500/5 hover:text-red-500"
+                  >
+                    Delete
+                  </button>
                 </div>
-                {r.revisit_at && (
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    due {new Date(r.revisit_at).toLocaleDateString()}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </BlueprintCard>
-      )}
-
-      <div className="mb-6">
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search decisions, titles, owners, sources…"
-          className="w-full rounded-md border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary/50"
-        />
-      </div>
-
-      <SectionLabel>Decisions</SectionLabel>
-
-      {filtered === null ? (
-        <BlueprintCard>
-          <p className="text-sm text-muted-foreground">Loading your graph…</p>
-        </BlueprintCard>
-      ) : filtered.length === 0 ? (
-        <BlueprintCard className="text-center">
-          <h3 className="font-display text-2xl text-foreground">
-            {rows && rows.length === 0 ? "Your graph is empty" : "No matches"}
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            {rows && rows.length === 0
-              ? "Paste a Slack thread, PR discussion, or meeting notes — the AI extracts the decision, scores it, and saves it as a node in your graph."
-              : "Try a different search."}
-          </p>
-          {rows && rows.length === 0 && (
-            <Link
-              to="/dashboard/new"
-              className="mt-5 inline-flex rounded-md bg-primary px-5 py-2.5 font-mono text-xs uppercase tracking-wider text-primary-foreground hover:bg-primary/90"
-            >
-              Capture your first decision →
-            </Link>
-          )}
-        </BlueprintCard>
-      ) : (
-        <div className="grid gap-3">
-          {filtered.map((r) => (
-            <BlueprintCard key={r.id}>
-              <div className="flex items-start justify-between gap-4">
-                <Link
-                  to="/dashboard/$id"
-                  params={{ id: r.id }}
-                  className="flex-1 group"
-                >
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    {r.source && <Tag color="blue">{r.source}</Tag>}
-                    {r.risk_level && (
-                      <Tag color={r.risk_level === "low" ? "green" : r.risk_level === "medium" ? "amber" : "red"}>
-                        {r.risk_level} risk
-                      </Tag>
-                    )}
-                    {r.owner && <Tag color="blue">owner · {r.owner}</Tag>}
-                    {r.conflicts?.length > 0 && (
-                      <Tag color="red">⚠ {r.conflicts.length} conflict{r.conflicts.length > 1 ? "s" : ""}</Tag>
-                    )}
-                    {r.revisit_trigger && <Tag color="amber">🔔 revisit</Tag>}
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {r.title && (
-                    <div className="mb-1 text-sm text-muted-foreground">{r.title}</div>
-                  )}
-                  <p className="text-base leading-snug text-foreground group-hover:text-primary">
-                    {r.decision}
-                  </p>
-                </Link>
-                <button
-                  onClick={() => remove(r.id)}
-                  className="rounded-md border border-border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
-                >
-                  Delete
-                </button>
-              </div>
-            </BlueprintCard>
+              </BlueprintCard>
+            </Reveal>
           ))}
         </div>
       )}
     </Shell>
   );
 }
+
