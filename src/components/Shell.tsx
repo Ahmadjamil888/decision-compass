@@ -81,6 +81,7 @@ export function Shell({
               <>
                 <Link
                   to="/login"
+                  search={{ redirect: "/dashboard" }}
                   className="rounded-md px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 >
                   Sign in
@@ -123,7 +124,7 @@ export function Shell({
 function pageTitle(pathname: string) {
   if (pathname === "/features") return "Every feature, one purpose.";
   if (pathname === "/architecture") return "Architecture";
-  if (pathname === "/roadmap") return "MVP Roadmap";
+  if (pathname === "/roadmap") return "How IMOS evolves.";
   return "Institutional Memory OS";
 }
 function pageSubtitle(pathname: string) {
@@ -132,7 +133,7 @@ function pageSubtitle(pathname: string) {
   if (pathname === "/architecture")
     return "Event-sourced, dual-store, async-first, and multi-tenant by design.";
   if (pathname === "/roadmap")
-    return "12 weeks to a working product. Validation in week 1, killer features by week 12.";
+    return "We're building IMOS in layers — each one delivers real value before the next arrives.";
   return "A passive knowledge capture system that turns organizational activity into a living, queryable decision graph — so expertise survives headcount turnover.";
 }
 
