@@ -6,7 +6,6 @@ const tabs = [
   { to: "/", label: "Home" },
   { to: "/features", label: "Features" },
   { to: "/architecture", label: "Architecture" },
-  { to: "/roadmap", label: "Roadmap" },
 ] as const;
 
 export function Shell({
@@ -124,7 +123,6 @@ export function Shell({
 function pageTitle(pathname: string) {
   if (pathname === "/features") return "Every feature, one purpose.";
   if (pathname === "/architecture") return "Architecture";
-  if (pathname === "/roadmap") return "How IMOS evolves.";
   return "Institutional Memory OS";
 }
 function pageSubtitle(pathname: string) {
@@ -132,9 +130,7 @@ function pageSubtitle(pathname: string) {
     return "Eight modules that turn passive activity into queryable institutional knowledge.";
   if (pathname === "/architecture")
     return "Event-sourced, dual-store, async-first, and multi-tenant by design.";
-  if (pathname === "/roadmap")
-    return "We're building IMOS in layers — each one delivers real value before the next arrives.";
-  return "A passive knowledge capture system that turns organizational activity into a living, queryable decision graph — so expertise survives headcount turnover.";
+  return "If you don't capture decisions, your team operates blind on legacy code — re-litigating choices made years ago, breaking constraints no one remembers.";
 }
 
 export function Tag({
