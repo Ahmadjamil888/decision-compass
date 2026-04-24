@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
-import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -23,11 +22,6 @@ import { Route as DashboardIdRouteImport } from './routes/dashboard.$id'
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RoadmapRoute = RoadmapRouteImport.update({
-  id: '/roadmap',
-  path: '/roadmap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -77,7 +71,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
-  '/roadmap': typeof RoadmapRoute
   '/signup': typeof SignupRoute
   '/dashboard/$id': typeof DashboardIdRoute
   '/dashboard/new': typeof DashboardNewRoute
@@ -88,7 +81,6 @@ export interface FileRoutesByTo {
   '/architecture': typeof ArchitectureRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
-  '/roadmap': typeof RoadmapRoute
   '/signup': typeof SignupRoute
   '/dashboard/$id': typeof DashboardIdRoute
   '/dashboard/new': typeof DashboardNewRoute
@@ -101,7 +93,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
-  '/roadmap': typeof RoadmapRoute
   '/signup': typeof SignupRoute
   '/dashboard/$id': typeof DashboardIdRoute
   '/dashboard/new': typeof DashboardNewRoute
@@ -115,7 +106,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/features'
     | '/login'
-    | '/roadmap'
     | '/signup'
     | '/dashboard/$id'
     | '/dashboard/new'
@@ -126,7 +116,6 @@ export interface FileRouteTypes {
     | '/architecture'
     | '/features'
     | '/login'
-    | '/roadmap'
     | '/signup'
     | '/dashboard/$id'
     | '/dashboard/new'
@@ -138,7 +127,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/features'
     | '/login'
-    | '/roadmap'
     | '/signup'
     | '/dashboard/$id'
     | '/dashboard/new'
@@ -151,7 +139,6 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   FeaturesRoute: typeof FeaturesRoute
   LoginRoute: typeof LoginRoute
-  RoadmapRoute: typeof RoadmapRoute
   SignupRoute: typeof SignupRoute
 }
 
@@ -162,13 +149,6 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/roadmap': {
-      id: '/roadmap'
-      path: '/roadmap'
-      fullPath: '/roadmap'
-      preLoaderRoute: typeof RoadmapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -252,7 +232,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   FeaturesRoute: FeaturesRoute,
   LoginRoute: LoginRoute,
-  RoadmapRoute: RoadmapRoute,
   SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
