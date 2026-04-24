@@ -288,7 +288,7 @@ function NewDecisionPage() {
 
               {result.revisit_trigger && (
                 <Field label="Revisit when">
-                  <p className="rounded-md border border-amber-500/20 bg-tag-amber/40 px-3 py-2 text-sm text-foreground">
+                  <p className="rounded-md border border-tag-amber-foreground/30 bg-tag-amber/40 px-3 py-2 text-sm text-foreground">
                     🔔 {result.revisit_trigger}
                   </p>
                 </Field>
