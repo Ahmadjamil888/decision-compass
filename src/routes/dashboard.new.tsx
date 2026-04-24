@@ -17,13 +17,30 @@ const SAMPLE = `@alice 10:14 — We keep getting paged on the auth service. Post
 @bob 10:24 — Cloud SQL pooler is one config flag. Supabase is a migration. We have a SOC2 audit in 6 weeks — not the time.
 @alice 10:26 — Agreed. Let's enable Cloud SQL connection pooling this week. Revisit Supabase pooler post-audit if we still see issues.`;
 
-type Decision = {
+type Extracted = {
   decision: string;
+  reason?: string;
   alternatives: string[];
   constraints: string[];
+  tradeoffs: string[];
   expected_outcome: string;
+  owner?: string;
+  contributors: string[];
+  revisit_trigger?: string;
   relations: { type: string; target: string }[];
   confidence: number;
+  clarity_score: number;
+  consensus_score: number;
+  risk_score: number;
+  reversibility_score: number;
+  risk_level: "low" | "medium" | "high";
+};
+
+type Conflict = {
+  past_id: string;
+  past_decision: string;
+  type: "contradicts" | "overrides" | "duplicates";
+  explanation: string;
 };
 
 function NewDecisionPage() {
@@ -34,18 +51,41 @@ function NewDecisionPage() {
   const [source, setSource] = useState("Slack");
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [result, setResult] = useState<Decision | null>(null);
+  const [result, setResult] = useState<Extracted | null>(null);
+  const [conflicts, setConflicts] = useState<Conflict[]>([]);
 
   const extract = async () => {
     setExtracting(true);
     setResult(null);
+    setConflicts([]);
     try {
       const { data, error } = await supabase.functions.invoke("extract-decision", {
         body: { thread },
       });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
-      setResult(data as Decision);
+      const extracted = data as Extracted;
+      setResult(extracted);
+
+      // Conflict detection vs past decisions
+      const { data: past } = await supabase
+        .from("decision_threads")
+        .select("id, decision, constraints, tradeoffs")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (past && past.length > 0) {
+        const { data: cdata } = await supabase.functions.invoke("detect-conflicts", {
+          body: {
+            newDecision: {
+              decision: extracted.decision,
+              constraints: extracted.constraints,
+              tradeoffs: extracted.tradeoffs,
+            },
+            pastDecisions: past,
+          },
+        });
+        if (cdata?.conflicts) setConflicts(cdata.conflicts as Conflict[]);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Extraction failed");
     } finally {
@@ -56,6 +96,7 @@ function NewDecisionPage() {
   const save = async () => {
     if (!result || !user) return;
     setSaving(true);
+    const revisitAt = parseRevisit(result.revisit_trigger);
     const { data, error } = await supabase
       .from("decision_threads")
       .insert({
@@ -64,19 +105,49 @@ function NewDecisionPage() {
         source: source.trim() || null,
         raw_thread: thread,
         decision: result.decision,
+        reason: result.reason || null,
         alternatives: result.alternatives,
         constraints: result.constraints,
+        tradeoffs: result.tradeoffs,
         expected_outcome: result.expected_outcome,
+        owner: result.owner || null,
+        contributors: result.contributors,
+        revisit_trigger: result.revisit_trigger || null,
+        revisit_at: revisitAt,
         relations: result.relations,
         confidence: result.confidence,
+        clarity_score: result.clarity_score,
+        consensus_score: result.consensus_score,
+        risk_score: result.risk_score,
+        reversibility_score: result.reversibility_score,
+        risk_level: result.risk_level,
+        conflicts: conflicts,
       })
       .select("id")
       .single();
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
+    if (error || !data) {
+      setSaving(false);
+      toast.error(error?.message ?? "Save failed");
       return;
     }
+
+    // Seed timeline events
+    const events = [
+      { kind: "problem", label: "Problem surfaced in thread", detail: null },
+      { kind: "discussion", label: "Discussion among contributors", detail: result.contributors.join(", ") || null },
+      { kind: "decided", label: "Decision made", detail: result.decision },
+    ];
+    await supabase.from("decision_events").insert(
+      events.map((e) => ({
+        thread_id: data.id,
+        user_id: user.id,
+        kind: e.kind,
+        label: e.label,
+        detail: e.detail,
+      })),
+    );
+
+    setSaving(false);
     toast.success("Saved to your graph");
     navigate({ to: "/dashboard/$id", params: { id: data.id } });
   };
@@ -92,8 +163,9 @@ function NewDecisionPage() {
         </button>
         <SectionLabel>Capture a decision</SectionLabel>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Paste a conversation, then let the AI extract the decision structure. Review and
-          save it to your graph.
+          Paste a conversation. The extraction engine pulls the decision, reason, alternatives,
+          trade-offs, owner, revisit trigger, and quality scores — and flags conflicts with past
+          decisions before you save.
         </p>
       </div>
 
@@ -160,7 +232,7 @@ function NewDecisionPage() {
 
         <BlueprintCard>
           <h3 className="mb-3 font-mono text-xs uppercase tracking-wider text-primary">
-            Output · Why-graph node
+            Output · Structured decision
           </h3>
 
           {!result && !extracting && (
@@ -173,60 +245,78 @@ function NewDecisionPage() {
           {extracting && (
             <div className="flex h-full min-h-[280px] items-center justify-center">
               <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                Reasoning over thread…
+                Reasoning over thread, scoring, checking conflicts…
               </p>
             </div>
           )}
 
           {result && (
             <div className="space-y-4">
-              <ResultField label="Decision">
+              <Field label="Decision">
                 <p className="text-base leading-relaxed text-foreground">{result.decision}</p>
-                <div className="mt-2">
-                  <Tag
-                    color={
-                      result.confidence > 0.7
-                        ? "green"
-                        : result.confidence > 0.4
-                          ? "amber"
-                          : "red"
-                    }
-                  >
-                    confidence · {(result.confidence * 100).toFixed(0)}%
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Tag color={result.risk_level === "low" ? "green" : result.risk_level === "medium" ? "amber" : "red"}>
+                    {result.risk_level} risk
+                  </Tag>
+                  <Tag color={result.consensus_score > 0.7 ? "green" : result.consensus_score > 0.4 ? "amber" : "red"}>
+                    consensus {(result.consensus_score * 100).toFixed(0)}%
+                  </Tag>
+                  <Tag color={result.reversibility_score > 0.6 ? "green" : "amber"}>
+                    {result.reversibility_score > 0.6 ? "reversible" : "one-way door"}
                   </Tag>
                 </div>
-              </ResultField>
+              </Field>
 
-              <ResultField label="Expected outcome">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {result.expected_outcome || "—"}
-                </p>
-              </ResultField>
+              {result.reason && (
+                <Field label="Why">
+                  <p className="text-sm leading-relaxed text-muted-foreground">{result.reason}</p>
+                </Field>
+              )}
 
-              <ResultField label="Alternatives">
-                <ListBlock items={result.alternatives} />
-              </ResultField>
+              <div className="grid grid-cols-2 gap-3">
+                {result.owner && (
+                  <Field label="Owner">
+                    <p className="text-sm text-foreground">{result.owner}</p>
+                  </Field>
+                )}
+                {result.contributors.length > 0 && (
+                  <Field label="Contributors">
+                    <p className="text-sm text-foreground">{result.contributors.join(", ")}</p>
+                  </Field>
+                )}
+              </div>
 
-              <ResultField label="Constraints">
-                <ListBlock items={result.constraints} />
-              </ResultField>
+              {result.revisit_trigger && (
+                <Field label="Revisit when">
+                  <p className="rounded-md border border-amber-500/20 bg-tag-amber/40 px-3 py-2 text-sm text-foreground">
+                    🔔 {result.revisit_trigger}
+                  </p>
+                </Field>
+              )}
 
-              <ResultField label="Graph relations">
-                {result.relations.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">None inferred.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {result.relations.map((r, i) => (
-                      <li key={i} className="flex items-baseline gap-2">
-                        <span className="rounded bg-tag-blue px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-tag-blue-foreground">
-                          {r.type}
-                        </span>
-                        <span className="text-sm text-foreground">{r.target}</span>
+              <Field label="Trade-offs">
+                <List items={result.tradeoffs} />
+              </Field>
+              <Field label="Alternatives rejected">
+                <List items={result.alternatives} />
+              </Field>
+              <Field label="Constraints">
+                <List items={result.constraints} />
+              </Field>
+
+              {conflicts.length > 0 && (
+                <Field label={`⚠ Conflicts with ${conflicts.length} past decision${conflicts.length > 1 ? "s" : ""}`}>
+                  <ul className="space-y-2">
+                    {conflicts.map((c, i) => (
+                      <li key={i} className="rounded border border-tag-red-foreground/30 bg-tag-red/30 p-2.5">
+                        <Tag color="red">{c.type}</Tag>
+                        <p className="mt-1.5 text-sm text-foreground">{c.past_decision}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{c.explanation}</p>
                       </li>
                     ))}
                   </ul>
-                )}
-              </ResultField>
+                </Field>
+              )}
 
               <button
                 onClick={save}
@@ -243,7 +333,7 @@ function NewDecisionPage() {
   );
 }
 
-function ResultField({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -254,7 +344,7 @@ function ResultField({ label, children }: { label: string; children: React.React
   );
 }
 
-function ListBlock({ items }: { items: string[] }) {
+function List({ items }: { items: string[] }) {
   if (!items || items.length === 0)
     return <p className="text-sm text-muted-foreground">None recorded.</p>;
   return (
@@ -269,4 +359,18 @@ function ListBlock({ items }: { items: string[] }) {
       ))}
     </ul>
   );
+}
+
+// Best-effort parse of revisit trigger into a date if the phrase contains a duration.
+function parseRevisit(trigger?: string): string | null {
+  if (!trigger) return null;
+  const m = trigger.match(/(\d+)\s*(day|week|month|quarter|year)s?/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  const unit = m[2].toLowerCase();
+  const days =
+    unit === "day" ? n : unit === "week" ? n * 7 : unit === "month" ? n * 30 : unit === "quarter" ? n * 90 : n * 365;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
 }
